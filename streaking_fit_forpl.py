@@ -118,8 +118,8 @@ class streak:
 			self.Y1 = self.y-self.length*cos(self.PA)*0.5+self.Y-self.size
 			self.X0_err = (self.x_err**2+(0.5*self.length*sin(self.PA))**2*((self.length_err/self.length)**2+(cos(self.PA)*self.PA_err/sin(self.PA))**2))**0.5
 			self.X1_err = (self.x_err**2+(0.5*self.length*sin(self.PA))**2*((self.length_err/self.length)**2+(cos(self.PA)*self.PA_err/sin(self.PA))**2))**0.5
-			self.Y0_err = (self.y_err**2+(0.5*self.length*sin(self.PA))**2*((self.length_err/self.length)**2+(sin(self.PA)*self.PA_err/cos(self.PA))**2))**0.5
-			self.Y1_err = (self.y_err**2+(0.5*self.length*sin(self.PA))**2*((self.length_err/self.length)**2+(sin(self.PA)*self.PA_err/cos(self.PA))**2))**0.5
+			self.Y0_err = (self.y_err**2+(0.5*self.length*cos(self.PA))**2*((self.length_err/self.length)**2+(sin(self.PA)*self.PA_err/cos(self.PA))**2))**0.5
+			self.Y1_err = (self.y_err**2+(0.5*self.length*cos(self.PA))**2*((self.length_err/self.length)**2+(sin(self.PA)*self.PA_err/cos(self.PA))**2))**0.5
 			ximg, yimg = shape(self.streak_image)
 			Xin, Yin = mgrid[:ximg, 0:yimg]
 			self.streak_model = self.trail(*self.fit_result)(Xin,Yin)
