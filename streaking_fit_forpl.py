@@ -24,6 +24,7 @@
 # v1.3.1: improve efficiency
 # v1.4: updated to process ZTF input difference images (Modified by F. Masci on 16/04/17)
 # v1.4.1: fixed the "fitting failure" issue caused by the nan pixel (Modified by E. Lin on 18/04/17)
+# v1.4.2: corrected the X_err and Y_err calculations (Modified by E. Lin on 26/10/17)
 ##########################################################################
 
 from numpy import *
@@ -115,10 +116,10 @@ class streak:
 			self.X1 = self.x-self.length*sin(self.PA)*0.5+self.X-self.size
 			self.Y0 = self.y+self.length*cos(self.PA)*0.5+self.Y-self.size
 			self.Y1 = self.y-self.length*cos(self.PA)*0.5+self.Y-self.size
-			self.X0_err = (self.x_err**2+0.5**2*(self.length_err/self.length)**2+(cos(self.PA)*self.PA_err/sin(self.PA))**2)**0.5
-			self.X1_err = (self.x_err**2+0.5**2*(self.length_err/self.length)**2+(cos(self.PA)*self.PA_err/sin(self.PA))**2)**0.5
-			self.Y0_err = (self.y_err**2+0.5**2*(self.length_err/self.length)**2+(sin(self.PA)*self.PA_err/cos(self.PA))**2)**0.5
-			self.Y1_err = (self.y_err**2+0.5**2*(self.length_err/self.length)**2+(sin(self.PA)*self.PA_err/cos(self.PA))**2)**0.5
+			self.X0_err = (self.x_err**2+(0.5*self.length*sin(self.PA))**2*((self.length_err/self.length)**2+(cos(self.PA)*self.PA_err/sin(self.PA))**2))**0.5
+			self.X1_err = (self.x_err**2+(0.5*self.length*sin(self.PA))**2*((self.length_err/self.length)**2+(cos(self.PA)*self.PA_err/sin(self.PA))**2))**0.5
+			self.Y0_err = (self.y_err**2+(0.5*self.length*sin(self.PA))**2*((self.length_err/self.length)**2+(sin(self.PA)*self.PA_err/cos(self.PA))**2))**0.5
+			self.Y1_err = (self.y_err**2+(0.5*self.length*sin(self.PA))**2*((self.length_err/self.length)**2+(sin(self.PA)*self.PA_err/cos(self.PA))**2))**0.5
 			ximg, yimg = shape(self.streak_image)
 			Xin, Yin = mgrid[:ximg, 0:yimg]
 			self.streak_model = self.trail(*self.fit_result)(Xin,Yin)
