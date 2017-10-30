@@ -1,7 +1,7 @@
 
 ##########################################################################
 #
-# streaking_fit_forpl.py, version 1.4.1
+# streaking_fit_forpl.py, version 1.5
 #
 # Perform PSF (x) line fitting on input candidate streaks from findstreaks
 # and compute metrics. 
@@ -24,7 +24,8 @@
 # v1.3.1: improve efficiency
 # v1.4: updated to process ZTF input difference images (Modified by F. Masci on 16/04/17)
 # v1.4.1: fixed the "fitting failure" issue caused by the nan pixel (Modified by E. Lin on 18/04/17)
-# v1.4.2: corrected the X_err and Y_err calculations (Modified by E. Lin on 26/10/17)
+# v1.4.2: corrected the uncertainties calculations (Modified by E. Lin on 28/10/17)
+# v1.5: Generate covariance matrix of x0, y0, x1, y1 (Modified by E. Lin on 29/10/17)
 ##########################################################################
 
 from numpy import *
@@ -105,21 +106,52 @@ class streak:
 			return 1	
 		else:
 			return 0
-	def cal_properties(self):	
+	def cal_properties(self):
 		s_sq = (self.errorfunction(self.fit_result)**2).sum()/(2*self.size)**2
 		try:
 			self.cov = self.cov * s_sq
-			self.fit_err = diag(self.cov)**0.5 
 			self.flux, self.length, self.x, self.y, self.sigma, self.PA, self.BG = self.fit_result
+			rot = matrix([[1, 0, 0.5*sin(self.PA), 0],[0, 1, 0.5*cos(self.PA), 0],[1, 0, -0.5*sin(self.PA), 0],[0, 1, -0.5*cos(self.PA), 0]])
+			xyls = matrix([[self.x+self.X-self.size],[self.y+self.Y-self.size],[self.length],[self.sigma]])
+			x0, y0, x1, y1 = rot*xyls
+			self.X0 = float(x0)
+			self.X1 = float(x1)
+			self.Y0 = float(y0)
+			self.Y1 = float(y1)
+			self.fit_err = diag(self.cov)**0.5 
 			self.flux_err, self.length_err, self.x_err, self.y_err, self.sigma_err, self.PA_err, self.BG_err = self.fit_err
-			self.X0 = self.x+self.length*sin(self.PA)*0.5+self.X-self.size
-			self.X1 = self.x-self.length*sin(self.PA)*0.5+self.X-self.size
-			self.Y0 = self.y+self.length*cos(self.PA)*0.5+self.Y-self.size
-			self.Y1 = self.y-self.length*cos(self.PA)*0.5+self.Y-self.size
-			self.X0_err = (self.x_err**2+(0.5*self.length*sin(self.PA))**2*((self.length_err/self.length)**2+(cos(self.PA)*self.PA_err/sin(self.PA))**2))**0.5
-			self.X1_err = (self.x_err**2+(0.5*self.length*sin(self.PA))**2*((self.length_err/self.length)**2+(cos(self.PA)*self.PA_err/sin(self.PA))**2))**0.5
-			self.Y0_err = (self.y_err**2+(0.5*self.length*cos(self.PA))**2*((self.length_err/self.length)**2+(sin(self.PA)*self.PA_err/cos(self.PA))**2))**0.5
-			self.Y1_err = (self.y_err**2+(0.5*self.length*cos(self.PA))**2*((self.length_err/self.length)**2+(sin(self.PA)*self.PA_err/cos(self.PA))**2))**0.5
+			xyls_err = matrix([[self.cov[2][2], self.cov[2][3], self.cov[2][1], self.cov[2][4]],\
+			                   [self.cov[3][2], self.cov[3][3], self.cov[3][1], self.cov[3][4]],\
+			                   [self.cov[1][2], self.cov[1][3], self.cov[1][1], self.cov[1][4]],\
+			                   [self.cov[4][2], self.cov[4][3], self.cov[4][1], self.cov[4][4]]])
+			                   
+			cov = rot * xyls_err  * rot.T
+			#self.X0 = self.x+self.length*sin(self.PA)*0.5+self.X-self.size
+			#self.X1 = self.x-self.length*sin(self.PA)*0.5+self.X-self.size
+			#self.Y0 = self.y+self.length*cos(self.PA)*0.5+self.Y-self.size
+			#self.Y1 = self.y-self.length*cos(self.PA)*0.5+self.Y-self.size
+			cov = array(cov)
+			sigma_x0x0, sigma_x0y0, sigma_x0x1, sigma_x1y1 = cov[0]
+			sigma_y0x0, sigma_y0y0, sigma_y0x1, sigma_y0y1 = cov[1]
+			sigma_x1x0, sigma_x1y0, sigma_x1x1, sigma_x1y1 = cov[2]
+			sigma_y1x0, sigma_y1y0, sigma_y1x1, sigma_y1y1 = cov[3]
+			#self.X0_err = (self.x_err**2+(0.5*self.length*sin(self.PA))**2*((self.length_err/self.length)**2+(cos(self.PA)*self.PA_err/sin(self.PA))**2))**0.5
+			#self.X1_err = (self.x_err**2+(0.5*self.length*sin(self.PA))**2*((self.length_err/self.length)**2+(cos(self.PA)*self.PA_err/sin(self.PA))**2))**0.5
+			#self.Y0_err = (self.y_err**2+(0.5*self.length*cos(self.PA))**2*((self.length_err/self.length)**2+(sin(self.PA)*self.PA_err/cos(self.PA))**2))**0.5
+			#self.Y1_err = (self.y_err**2+(0.5*self.length*cos(self.PA))**2*((self.length_err/self.length)**2+(sin(self.PA)*self.PA_err/cos(self.PA))**2))**0.5
+			self.X0_err = sigma_x0x0**0.5
+			self.Y0_err = sigma_y0y0**0.5
+			self.X1_err = sigma_x1x1**0.5
+			self.Y1_err = sigma_y1y1**0.5 
+			
+			self.X0Y0 = sigma_x0y0
+			self.X1Y1 = sigma_x1y1
+			
+			#print self.X0, self.X0_err, sigma_x0x0**0.5
+			#print self.Y0, self.Y0_err, sigma_y0y0**0.5
+			#print self.X1, self.X1_err, sigma_x1x1**0.5
+			#print self.Y1, self.Y1_err, sigma_y1y1**0.5 
+			
 			ximg, yimg = shape(self.streak_image)
 			Xin, Yin = mgrid[:ximg, 0:yimg]
 			self.streak_model = self.trail(*self.fit_result)(Xin,Yin)
@@ -209,7 +241,7 @@ def main():
 	
 	if good and abs(asteroid.fit_result[1]) >= 10. and  abs(cos(-asteroid.PA0/180.*pi-asteroid.fit_result[5])) > 0.70:
 		
-		asteroid.cal_properties()
+		#asteroid.cal_properties()
 		asteroid.cal_mag()
 		asteroid.cal_ra_dec()
 		#asteroid.plot() # plot the sub frame image before/after subtract the fitting result
@@ -270,17 +302,17 @@ if __name__ == "__main__":
         import argparse
         parser = argparse.ArgumentParser()
         parser.add_argument('-dimgname', dest='dimgname', type=str)
-	parser.add_argument('-subsz', dest='subsz', type=float)
-	parser.add_argument('-xpos', dest='xpos', type=float)
-	parser.add_argument('-ypos', dest='ypos', type=float)
-	parser.add_argument('-PA', dest='PA0', type=float)
+        parser.add_argument('-subsz', dest='subsz', type=float)
+        parser.add_argument('-xpos', dest='xpos', type=float)
+        parser.add_argument('-ypos', dest='ypos', type=float)
+        parser.add_argument('-PA', dest='PA0', type=float)
 
-	args = parser.parse_args()
+        args = parser.parse_args()
         asteroid = streak(args.dimgname) #read fits image
         asteroid.size = args.subsz
         asteroid.X = args.xpos
         asteroid.Y = args.ypos
         asteroid.PA0 = args.PA0
 
-	main()
+        main()
 
