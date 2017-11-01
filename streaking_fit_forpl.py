@@ -1,7 +1,7 @@
 
 ##########################################################################
 #
-# streaking_fit_forpl.py, version 1.5
+# streaking_fit_forpl.py, version 1.5.1
 #
 # Perform PSF (x) line fitting on input candidate streaks from findstreaks
 # and compute metrics. 
@@ -25,7 +25,8 @@
 # v1.4: updated to process ZTF input difference images (Modified by F. Masci on 16/04/17)
 # v1.4.1: fixed the "fitting failure" issue caused by the nan pixel (Modified by E. Lin on 18/04/17)
 # v1.4.2: corrected the uncertainties calculations (Modified by E. Lin on 28/10/17)
-# v1.5: Generate covariance matrix of x0, y0, x1, y1 (Modified by E. Lin on 29/10/17)
+# v1.5: Generate the covariance matrix of x0, y0, x1, y1 (Modified by E. Lin on 29/10/17)
+# v1.5.1: Calculate the covariance matrix of RA, DEC (Modified by E. Lin on 30/10/17)
 ##########################################################################
 
 from numpy import *
@@ -146,6 +147,38 @@ class streak:
 			
 			self.X0Y0 = sigma_x0y0
 			self.X1Y1 = sigma_x1y1
+			CRVAL1  = self.image.header['CRVAL1']
+			CRVAL2  = self.image.header['CRVAL2']
+			CRPIX1  = self.image.header['CRPIX1']
+			CRPIX2  = self.image.header['CRPIX2']
+			CD11 =  self.image.header['CD1_1']
+			CD12 =  self.image.header['CD1_2']
+			CD21 =  self.image.header['CD2_1']
+			CD22 =  self.image.header['CD2_2']
+			CD_MATRIX = matrix([[CD11, CD12], [CD21, CD22]])*3600
+			RADEC0 = CD_MATRIX * matrix([[self.X0 - CRPIX1],[self.Y0 - CRPIX2]])
+			RADEC1 = CD_MATRIX * matrix([[self.X1 - CRPIX1],[self.Y1 - CRPIX2]])
+			#print CRVAL1, CRVAL2, CRPIX1, CRPIX2
+			#print CD_MATRIX
+			RA0 = array(RADEC0)[0] + CRVAL1
+			DEC0 = array(RADEC0)[1] + CRVAL2
+			RA1 = array(RADEC1)[0] + CRVAL1
+			DEC1 = array(RADEC1)[1] + CRVAL2			
+			#print RA0, DEC0, RA1, DEC1
+			
+			X0Y0_cov = matrix([[sigma_x0x0, sigma_x0y0],[sigma_x0y0, sigma_y0y0]])
+			X1Y1_cov = matrix([[sigma_x1x1, sigma_x1y1],[sigma_x1y1, sigma_y1y1]])
+			RADEC0_cov = CD_MATRIX * X0Y0_cov * CD_MATRIX.T
+			RADEC1_cov = CD_MATRIX * X1Y1_cov * CD_MATRIX.T
+			RADEC0_cov = abs(array(RADEC0_cov))
+			RADEC1_cov = abs(array(RADEC1_cov))
+			#print CD_MATRIX
+			#print X0Y0_cov
+			#print X1Y1_cov
+			self.rara0, self.radec0 = RADEC0_cov[0]
+			self.decra0, self.decdec0 = RADEC0_cov[1]
+			self.rara1, self.radec1 = RADEC1_cov[0]
+			self.decra1, self.decdec1 = RADEC1_cov[1]					
 			
 			#print self.X0, self.X0_err, sigma_x0x0**0.5
 			#print self.Y0, self.Y0_err, sigma_y0y0**0.5
@@ -284,8 +317,14 @@ def main():
 		print "# RA,Dec at endpoint pixel position x,y =",asteroid.X0,asteroid.Y0,":"
 		print " ",asteroid.ra0, asteroid.dec0
 
+		print "# RA,Dec uncertainties and covariance at endpoint x,y =",asteroid.X0,asteroid.Y0,":"
+		print " ",asteroid.rara0**0.5, asteroid.decdec0**0.5, asteroid.radec0
+
 		print "# RA,Dec at endpoint pixel position x,y =",asteroid.X1,asteroid.Y1,":"
 		print " ",asteroid.ra1, asteroid.dec1
+
+		print "# RA,Dec uncertainties and covariance at endpoint x,y =",asteroid.X1,asteroid.Y1,":"
+		print " ",asteroid.rara1**0.5, asteroid.decdec1**0.5, asteroid.radec1
 		
 		print "# Number of refit:"
 		print " ",n
