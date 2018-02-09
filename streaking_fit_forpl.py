@@ -1,7 +1,7 @@
 
 ##########################################################################
 #
-# streaking_fit_forpl.py, version 1.5.2
+# streaking_fit_forpl.py, version 1.5.3
 #
 # Perform PSF (x) line fitting on input candidate streaks from findstreaks
 # and compute metrics. 
@@ -28,6 +28,7 @@
 # v1.5: Generate the covariance matrix of x0, y0, x1, y1 (Modified by E. Lin on 29/10/17)
 # v1.5.1: Calculate the covariance matrix of RA, DEC (Modified by E. Lin on 30/10/17)
 # v1.5.2: RA, Dec uncertainties in unit "degrees"; output correlation coefficients instead covariances (Modified by E. Lin on 07/02/18)
+# v1.5.3: fixed the fitting issue when streak on image edge (Modified by E. Lin on 09/02/18)
 ##########################################################################
 
 from numpy import *
@@ -68,7 +69,25 @@ class streak:
 		self.mjd0 = float(self.image.header['obsmjd'])
 		self.exptime = float(self.image.header['EXPTIME'])
 		self.mjd1 = self.mjd0 + (self.exptime)/86400.
-		image = self.image.data[int(self.Y-self.size):int(self.Y+self.size), int(self.X-self.size):int(self.X+self.size)]
+		image = zeros([int(2*self.size), int(2*self.size)])
+		y_max, x_max = shape(self.image.data)
+		y_min, x_min = 0, 0
+		ya, yb, xa, xb = int(self.Y-self.size), int(self.Y+self.size), int(self.X-self.size), int(self.X+self.size)
+		y0 = max(ya, y_min)
+		y1 = min(yb, y_max)
+		x0 = max(xa, x_min)
+		x1 = min(xb, x_max)
+		image0 = self.image.data[y0:y1, x0:x1]
+		yoff, xoff = array(shape(image)) - array(shape(image0))
+		ysize, xsize = shape(image0)
+		if yb > y_max and xb > x_max:
+		    image[:ysize, :xsize] += image0
+		elif yb > y_max and xb <= x_max:
+		    image[:ysize, xoff:] += image0
+		elif yb <= y_max and xb > x_max:
+		    image[yoff:, :xsize] += image0
+		else:
+		    image[yoff:, xoff:] += image0
 		image[image < -999 ] = 0
 		image[isnan(image)] = 0
 		self.streak_image = image
