@@ -1,7 +1,7 @@
 
 ##########################################################################
 #
-# streaking_fit_forpl.py, version 1.5.1
+# streaking_fit_forpl.py, version 1.5.2
 #
 # Perform PSF (x) line fitting on input candidate streaks from findstreaks
 # and compute metrics. 
@@ -27,6 +27,7 @@
 # v1.4.2: corrected the uncertainties calculations (Modified by E. Lin on 28/10/17)
 # v1.5: Generate the covariance matrix of x0, y0, x1, y1 (Modified by E. Lin on 29/10/17)
 # v1.5.1: Calculate the covariance matrix of RA, DEC (Modified by E. Lin on 30/10/17)
+# v1.5.2: RA, Dec uncertainties in unit "degrees"; output correlation coefficients instead covariances (Modified by E. Lin on 07/02/18)
 ##########################################################################
 
 from numpy import *
@@ -155,7 +156,7 @@ class streak:
 			CD12 =  self.image.header['CD1_2']
 			CD21 =  self.image.header['CD2_1']
 			CD22 =  self.image.header['CD2_2']
-			CD_MATRIX = matrix([[CD11, CD12], [CD21, CD22]])*3600
+			CD_MATRIX = matrix([[CD11, CD12], [CD21, CD22]])
 			RADEC0 = CD_MATRIX * matrix([[self.X0 - CRPIX1],[self.Y0 - CRPIX2]])
 			RADEC1 = CD_MATRIX * matrix([[self.X1 - CRPIX1],[self.Y1 - CRPIX2]])
 			#print CRVAL1, CRVAL2, CRPIX1, CRPIX2
@@ -317,17 +318,17 @@ def main():
 		print "# RA,Dec at endpoint pixel position x,y =",asteroid.X0,asteroid.Y0,":"
 		print " ",asteroid.ra0, asteroid.dec0
 
-		print "# RA,Dec uncertainties and covariance at endpoint x,y =",asteroid.X0,asteroid.Y0,":"
-		print " ",asteroid.rara0**0.5, asteroid.decdec0**0.5, asteroid.radec0
-
 		print "# RA,Dec at endpoint pixel position x,y =",asteroid.X1,asteroid.Y1,":"
 		print " ",asteroid.ra1, asteroid.dec1
-
-		print "# RA,Dec uncertainties and covariance at endpoint x,y =",asteroid.X1,asteroid.Y1,":"
-		print " ",asteroid.rara1**0.5, asteroid.decdec1**0.5, asteroid.radec1
 		
 		print "# Number of refit:"
 		print " ",n
+		
+		print "# RA,Dec uncertainties and correlation coefficient at endpoint x,y =",asteroid.X0,asteroid.Y0,":"
+		print " ",asteroid.rara0**0.5, asteroid.decdec0**0.5, asteroid.radec0/(asteroid.rara0**0.5*asteroid.decdec0**0.5)
+
+		print "# RA,Dec uncertainties and correlation coefficient at endpoint x,y =",asteroid.X1,asteroid.Y1,":"
+		print " ",asteroid.rara1**0.5, asteroid.decdec1**0.5, asteroid.radec1/(asteroid.rara1**0.5*asteroid.decdec1**0.5)
 		
 		return 1
 	else:
